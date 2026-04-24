@@ -1,18 +1,9 @@
 require("dotenv").config();
 
-const {
-  Client,
-  GatewayIntentBits,
-  Events,
-  ChannelType,
-  PermissionsBitField
-} = require("discord.js");
+const { Client, GatewayIntentBits, Events, ChannelType } = require("discord.js");
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers
-  ],
+  intents: [GatewayIntentBits.Guilds],
 });
 
 client.once(Events.ClientReady, () => {
@@ -24,82 +15,54 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const { commandName } = interaction;
 
-  // 🔒 Admin only (change if needed)
-  if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return interaction.reply({
-      content: "❌ You don't have permission to use this command.",
-      ephemeral: true
-    });
-  }
-
-  // =========================
-  // 📩 DM COMMAND
-  // =========================
+  // ✅ DM COMMAND
   if (commandName === "dm") {
-    await interaction.deferReply({ ephemeral: true });
-
     const user = interaction.options.getUser("user");
     const message = interaction.options.getString("message");
-
-    if (!user || !message) {
-      return interaction.editReply("❌ Missing user or message.");
-    }
 
     try {
       await user.send(message);
 
-      await interaction.editReply(`✅ DM sent to ${user.tag}`);
+      await interaction.reply({
+        content: `✅ DM sent to ${user.tag}`,
+        ephemeral: true,
+      });
 
     } catch (error) {
-      console.error("DM Error:", error);
-
-      if (error.code === 50007) {
-        await interaction.editReply("❌ Cannot DM this user (DMs off / blocked).");
-      } else {
-        await interaction.editReply("❌ Failed to DM user.");
-      }
+      await interaction.reply({
+        content: `❌ Failed to DM ${user.tag} (maybe DMs off / blocked)`,
+        ephemeral: true,
+      });
     }
   }
 
-  // =========================
-  // 📢 SEND COMMAND
-  // =========================
-  else if (commandName === "send") {
-    await interaction.deferReply({ ephemeral: true });
-
+  // ✅ SEND MESSAGE TO CHANNEL
+  if (commandName === "send") {
     const channel = interaction.options.getChannel("channel");
     const message = interaction.options.getString("message");
 
-    if (!channel || !message) {
-      return interaction.editReply("❌ Missing channel or message.");
-    }
-
     if (channel.type !== ChannelType.GuildText) {
-      return interaction.editReply("❌ Must be a text channel.");
-    }
-
-    // 🔒 Check bot permissions
-    const botPerms = channel.permissionsFor(interaction.client.user);
-
-    if (!botPerms.has(PermissionsBitField.Flags.SendMessages)) {
-      return interaction.editReply("❌ I don't have permission in that channel.");
+      return interaction.reply({
+        content: "❌ Must be a text channel",
+        ephemeral: true,
+      });
     }
 
     try {
       await channel.send(message);
 
-      await interaction.editReply(`✅ Message sent in #${channel.name}`);
+      await interaction.reply({
+        content: `✅ Message sent in #${channel.name}`,
+        ephemeral: true,
+      });
 
     } catch (error) {
-      console.error("Send Error:", error);
-      await interaction.editReply("❌ Failed to send message.");
+      await interaction.reply({
+        content: `❌ Failed to send message`,
+        ephemeral: true,
+      });
     }
   }
-});
-
-// ❗ Catch unexpected errors (prevents crashes)
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Promise Rejection:", err);
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
